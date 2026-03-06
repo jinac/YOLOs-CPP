@@ -15,6 +15,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Build Options
 # ============================================================================
 option(BUILD_EXAMPLES "Build example applications" OFF)
+option(BUILD_TOOLS "Build YOLOs-CPP tool executables" ON)
 option(ENABLE_WARNINGS "Enable compiler warnings" ON)
 
 # ============================================================================
@@ -161,13 +162,29 @@ function(add_yolo_executable name source)
 endfunction()
 
 # ============================================================================
+# Library Interface
+# ============================================================================
+add_library(yolos_cpp INTERFACE)
+target_include_directories(yolos_cpp INTERFACE
+  "${CMAKE_SOURCE_DIR}/include"
+  "${ONNXRUNTIME_DIR}/include"
+)
+target_link_libraries(yolos_cpp INTERFACE
+  ${OpenCV_LIBS}
+  ${ONNXRUNTIME_LIB}
+  Threads::Threads
+)
+
+# ============================================================================
 # Main Executables
 # ============================================================================
-add_yolo_executable(image_inference src/image_inference.cpp)
-add_yolo_executable(video_inference src/video_inference.cpp)
-add_yolo_executable(camera_inference src/camera_inference.cpp)
-add_yolo_executable(class_image_inference src/class_image_inference.cpp)
-add_yolo_executable(batch_image_inference src/batch_image_inference.cpp)
+if(BUILD_TOOLS)
+  add_yolo_executable(image_inference src/image_inference.cpp)
+  add_yolo_executable(video_inference src/video_inference.cpp)
+  add_yolo_executable(camera_inference src/camera_inference.cpp)
+  add_yolo_executable(class_image_inference src/class_image_inference.cpp)
+  add_yolo_executable(batch_image_inference src/batch_image_inference.cpp)
+endif()
 
 # ============================================================================
 # Examples (optional)
