@@ -16,6 +16,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # ============================================================================
 option(BUILD_EXAMPLES "Build example applications" OFF)
 option(ENABLE_WARNINGS "Enable compiler warnings" ON)
+option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 
 # ============================================================================
 # ONNX Runtime
@@ -87,6 +88,40 @@ include_directories(
 )
 
 # ============================================================================
+# Library Target
+# ============================================================================
+# Collect all source files
+set(SOURCES
+    src/image_inference.cpp
+    src/class_image_inference.cpp
+    src/video_inference.cpp
+    src/batch_image_inference.cpp
+    src/camera_inference.cpp
+)
+
+# Create a static library
+add_library(yolos STATIC ${SOURCES})
+
+# Set library properties
+set_target_properties(yolos PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION 1
+)
+
+# Link dependencies for the library
+target_link_libraries(yolos PRIVATE 
+    ${OpenCV_LIBS}
+    ${ONNXRUNTIME_LIB}
+    Threads::Threads
+)
+
+# Make sure to export public headers
+target_include_directories(yolos PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>"
+    "$<INSTALL_INTERFACE:include>"
+)
+
+# ============================================================================
 # Compiler Flags
 # ============================================================================
 if(ENABLE_WARNINGS)
@@ -129,6 +164,7 @@ function(add_yolo_executable name source)
     add_executable(${name} ${source})
     target_include_directories(${name} PRIVATE "${ONNXRUNTIME_DIR}/include")
     target_link_libraries(${name} PRIVATE 
+        yolos  # Link against our library
         ${OpenCV_LIBS}
         ${ONNXRUNTIME_LIB}
         Threads::Threads
