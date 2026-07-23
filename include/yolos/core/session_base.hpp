@@ -18,8 +18,9 @@
 #include <thread>
 #include <vector>
 
-#include "yolos/core/version.hpp"
+#include "yolos/core/onnx_metadata.hpp"
 #include "yolos/core/utils.hpp"
+#include "yolos/core/version.hpp"
 
 namespace yolos {
 
@@ -69,6 +70,11 @@ public:
     /// @brief Get the number of output nodes
     [[nodiscard]] size_t getNumOutputNodes() const noexcept { return numOutputNodes_; }
 
+    /// @brief Class names from ONNX custom metadata `names` (Ultralytics), if present.
+    [[nodiscard]] const std::vector<std::string>& getExportedClassNamesFromMetadata() const noexcept {
+        return exportedClassNamesFromMetadata_;
+    }
+
 protected:
     Ort::Env env_{nullptr};
     Ort::SessionOptions sessionOptions_{nullptr};
@@ -83,10 +89,14 @@ protected:
     size_t numInputNodes_{0};
     size_t numOutputNodes_{0};
 
+    int inputChannels_{3};
     cv::Size inputShape_;
     bool isDynamicInputShape_{false};
     bool isDynamicBatchSize_{false};
     std::string device_{"cpu"};
+
+    /// Ultralytics-exported `names` dict parsed from ONNX metadata (empty if missing).
+    std::vector<std::string> exportedClassNamesFromMetadata_;
 
     /// @brief Run inference with the given input tensor
     /// @param inputTensor Input tensor
@@ -181,6 +191,7 @@ private:
             isDynamicBatchSize_ = (inputTensorShape[0] == -1);
             isDynamicInputShape_ = (inputTensorShape[2] == -1 || inputTensorShape[3] == -1);
 
+            inputChannels_ = (inputTensorShape[1] == -1) ? 3 : static_cast<int>(inputTensorShape[1]);
             int height = (inputTensorShape[2] == -1) ? 640 : static_cast<int>(inputTensorShape[2]);
             int width = (inputTensorShape[3] == -1) ? 640 : static_cast<int>(inputTensorShape[3]);
             inputShape_ = cv::Size(width, height);
@@ -192,6 +203,12 @@ private:
         std::cout << "[INFO] Input shape: " << inputShape_.width << "x" << inputShape_.height
                   << (isDynamicInputShape_ ? " (dynamic)" : "") << std::endl;
         std::cout << "[INFO] Inputs: " << numInputNodes_ << ", Outputs: " << numOutputNodes_ << std::endl;
+
+        try {
+            exportedClassNamesFromMetadata_ = onnxmeta::tryGetExportedClassNames(session_);
+        } catch (...) {
+            exportedClassNamesFromMetadata_.clear();
+        }
     }
 };
 

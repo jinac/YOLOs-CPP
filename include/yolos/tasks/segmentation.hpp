@@ -68,7 +68,7 @@ public:
         classColors_ = drawing::generateColors(classNames_);
         
         // Pre-allocate inference buffer
-        buffer_.ensureCapacity(inputShape_.height, inputShape_.width, 3);
+        buffer_.ensureCapacity(inputShape_.height, inputShape_.width, inputChannels_);
     }
 
     virtual ~YOLOSegDetector() = default;
@@ -83,10 +83,10 @@ public:
                                       float iouThreshold = 0.45f) {
         // Optimized preprocessing with buffer reuse
         cv::Size actualSize;
-        preprocessing::letterBoxToBlob(image, buffer_, inputShape_, actualSize, isDynamicInputShape_);
+        preprocessing::letterBoxToBlob(image, buffer_, inputChannels_, inputShape_, actualSize, isDynamicInputShape_);
 
         // Create input tensor (uses pre-allocated blob)
-        std::vector<int64_t> inputTensorShape = {1, 3, actualSize.height, actualSize.width};
+        std::vector<int64_t> inputTensorShape = {1, static_cast<int64_t>(inputChannels_), actualSize.height, actualSize.width};
         Ort::Value inputTensor = createInputTensor(buffer_.blob.data(), inputTensorShape);
 
         // Run inference
@@ -143,9 +143,17 @@ public:
     /// @brief Get class colors
     [[nodiscard]] const std::vector<cv::Scalar>& getClassColors() const { return classColors_; }
 
+    /// @brief Enable or disable class-agnostic NMS (recommended for large vocabularies)
+    /// When true, NMS ignores class IDs and suppresses overlapping boxes across classes.
+    void setAgnosticNMS(bool enable) { agnosticNms_ = enable; }
+
+    /// @brief Check whether agnostic NMS is enabled
+    [[nodiscard]] bool isAgnosticNMS() const { return agnosticNms_; }
+
 protected:
     std::vector<std::string> classNames_;
     std::vector<cv::Scalar> classColors_;
+    bool agnosticNms_{false};
     static constexpr float MASK_THRESHOLD = 0.5f;
     
     // Pre-allocated buffer for inference (avoids per-frame allocations)
@@ -251,9 +259,14 @@ protected:
 
         if (letterboxBoxes.empty()) return results;
 
-        // Apply class-aware (batched) NMS on LETTERBOX coordinates with FLOAT precision
+        // Class-agnostic NMS merges overlapping boxes across all classes (for large vocabularies).
+        // Class-aware batched NMS uses per-class offsets to prevent cross-class suppression.
         std::vector<int> nmsIndices;
-        nms::NMSBoxesFBatched(letterboxBoxes, confidences, classIds, confThreshold, iouThreshold, nmsIndices);
+        if (agnosticNms_) {
+            nms::NMSBoxesF(letterboxBoxes, confidences, confThreshold, iouThreshold, nmsIndices);
+        } else {
+            nms::NMSBoxesFBatched(letterboxBoxes, confidences, classIds, confThreshold, iouThreshold, nmsIndices);
+        }
 
         if (nmsIndices.empty()) return results;
 

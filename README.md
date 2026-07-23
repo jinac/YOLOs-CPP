@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="data/cover.png" alt="YOLOs-CPP" width="100%"/>
+  <img src="https://raw.githubusercontent.com/Geekgineer/YOLOs-CPP/main/data/cover.png" alt="YOLOs-CPP" width="100%"/>
 </p>
 
 <h1 align="center">YOLOs-CPP</h1>
@@ -30,6 +30,7 @@
 
 ## 📰 Latest News
 
+* **[2026.04.11]** [YOLOE](https://arxiv.org/abs/2503.07465) open-vocabulary detection and segmentation in C++ — see [Model Guide](docs/guides/models.md#yoloe-open-vocabulary-detection-segmentation), `image_yoloe_seg` / `video_yoloe_seg`.
 * **[2026.01.22]** YOLOs-CPP-TensorRT released achive 530+ fps using NVIDIA GPUs and Jetson Boards. [YOLOs-CPP-TensorRT](https://github.com/Geekgineer/YOLOs-CPP-TensorRT)
 * **[2026.01.22]** CPP Implementation of popular MOT trackers released. [motcpp](https://github.com/Geekgineer/motcpp)
 * **[2026.01.22]** ROS 2 integration released. [ros2_yolos_cpp](https://github.com/Geekgineer/ros2_yolos_cpp)
@@ -71,7 +72,7 @@ YOLOs-CPP unifies everything under one roof:
 | What You Get | Description |
 |--------------|-------------|
 | **Unified API** | Same interface for YOLOv5 through YOLO26 |
-| **All Tasks** | Detection, Segmentation, Pose, OBB, Classification |
+| **All Tasks** | Detection, Segmentation, Pose, OBB, Classification, [YOLOE](docs/guides/models.md#yoloe-open-vocabulary-detection-segmentation) open-vocabulary |
 | **Battle-Tested** | 36 automated tests, CI/CD pipeline |
 | **Optimized** | Zero-copy preprocessing, batched NMS, GPU acceleration |
 | **Cross-Platform** | Linux, Windows, macOS, Docker |
@@ -83,21 +84,21 @@ YOLOs-CPP unifies everything under one roof:
 <table>
   <tr>
     <td align="center" width="50%">
-      <img src="data/SIG_experience_center_seg_processed.gif" alt="Instance Segmentation" width="100%"/>
+      <img src="https://raw.githubusercontent.com/Geekgineer/YOLOs-CPP/main/data/SIG_experience_center_seg_processed.gif" alt="Instance Segmentation" width="100%"/>
       <br/><strong>Instance Segmentation</strong>
     </td>
     <td align="center" width="50%">
-      <img src="data/dance_output.gif" alt="Pose Estimation" width="100%"/>
+      <img src="https://raw.githubusercontent.com/Geekgineer/YOLOs-CPP/main/data/dance_output.gif" alt="Pose Estimation" width="100%"/>
       <br/><strong>Pose Estimation</strong>
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
-      <img src="data/final_test_compressed_output.gif" alt="Object Detection" width="100%"/>
+      <img src="https://raw.githubusercontent.com/Geekgineer/YOLOs-CPP/main/data/final_test_compressed_output.gif" alt="Object Detection" width="100%"/>
       <br/><strong>Real-time Detection</strong>
     </td>
     <td align="center" width="50%">
-      <img src="data/SIG_experience_center_seg_processed-2.gif" alt="Multi-Object Detection and Segmentation" width="100%"/>
+      <img src="https://raw.githubusercontent.com/Geekgineer/YOLOs-CPP/main/data/SIG_experience_center_seg_processed-2.gif" alt="Multi-Object Detection and Segmentation" width="100%"/>
       <br/><strong>Multi-Object Detection</strong>
     </td>
   </tr>
@@ -179,6 +180,9 @@ docker run --gpus all --rm -it yolos-cpp:gpu
 | YOLOv11 | ✅ | ✅ | ✅ | ✅ | ✅ |
 | YOLOv12 | ✅ | — | — | — | — |
 | **YOLO26** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **[YOLOE](docs/guides/models.md#yoloe-open-vocabulary-detection-segmentation)** (open-vocab) | ✅ | ✅ | — | — | — |
+
+Open-vocabulary [YOLOE](docs/guides/models.md#yoloe-open-vocabulary-detection-segmentation) uses ONNX exported after `set_classes()` (text) or prompt-free `*-pf` checkpoints; see the guide for how that differs from interactive Python prompts. Export with [`scripts/export_yoloe_onnx.py`](scripts/export_yoloe_onnx.py), then run `./build/image_yoloe_seg` or `./build/video_yoloe_seg`, or the [benchmarks](benchmarks/README.md) `yoloe-seg` task.
 
 ### Core Capabilities
 
@@ -247,6 +251,26 @@ auto result = classifier.classify(frame);
 std::cout << "Predicted: " << result.className << " (" << result.confidence * 100 << "%)" << std::endl;
 ```
 
+### YOLOE (open-vocabulary segmentation)
+
+See [Model Guide — YOLOE](docs/guides/models.md#yoloe-open-vocabulary-detection-segmentation) for export and benchmarks.
+
+```cpp
+#include "yolos/tasks/yoloe.hpp"
+yolos::yoloe::YOLOESegDetector det("models/yoloe-26s-seg-text.onnx",
+    {"person", "car", "bus", "bicycle", "motorcycle", "truck"}, /*gpu=*/true);
+auto segs = det.segment(frame);
+det.drawSegmentations(frame, segs);
+```
+
+```bash
+# Image → image (JPEG/PNG …)
+./build/image_yoloe_seg data/photo.jpg out.jpg models/yoloe-26n-seg.onnx "person,car,bus" 0
+
+# Video → MP4
+./build/video_yoloe_seg data/Transmission.mp4 out.mp4 models/yoloe-26n-seg.onnx "person,car,bus" 1
+```
+
 ---
 
 ## 📊 Benchmarks
@@ -292,7 +316,8 @@ YOLOs-CPP/
 │   │   ├── segmentation.hpp # Instance segmentation
 │   │   ├── pose.hpp         # Pose estimation
 │   │   ├── obb.hpp          # Oriented bounding boxes
-│   │   └── classification.hpp
+│   │   ├── classification.hpp
+│   │   └── yoloe.hpp        # YOLOE open-vocabulary (det/seg)
 │   └── yolos.hpp            # Main include (includes all)
 ├── src/                     # Example applications
 ├── examples/                # Task-specific examples

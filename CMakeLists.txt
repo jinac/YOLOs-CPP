@@ -15,7 +15,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Build Options
 # ============================================================================
 option(BUILD_EXAMPLES "Build example applications" OFF)
-option(BUILD_TOOLS "Build YOLOs-CPP tool executables" ON)
+# option(BUILD_TOOLS "Build YOLOs-CPP tool executables" ON)
 option(ENABLE_WARNINGS "Enable compiler warnings" ON)
 
 # ============================================================================
@@ -128,7 +128,10 @@ endif()
 # ============================================================================
 function(add_yolo_executable name source)
     add_executable(${name} ${source})
-    target_include_directories(${name} PRIVATE "${ONNXRUNTIME_DIR}/include")
+    target_include_directories(${name} PRIVATE 
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        "${ONNXRUNTIME_DIR}/include"    
+    )
     target_link_libraries(${name} PRIVATE 
         ${OpenCV_LIBS}
         ${ONNXRUNTIME_LIB}
@@ -178,13 +181,15 @@ target_link_libraries(yolos_cpp INTERFACE
 # ============================================================================
 # Main Executables
 # ============================================================================
-if(BUILD_TOOLS)
-  add_yolo_executable(image_inference src/image_inference.cpp)
-  add_yolo_executable(video_inference src/video_inference.cpp)
-  add_yolo_executable(camera_inference src/camera_inference.cpp)
-  add_yolo_executable(class_image_inference src/class_image_inference.cpp)
-  add_yolo_executable(batch_image_inference src/batch_image_inference.cpp)
-endif()
+add_yolo_executable(image_inference src/image_inference.cpp)
+add_yolo_executable(video_inference src/video_inference.cpp)
+add_yolo_executable(video_yolo26_all_tasks src/video_yolo26_all_tasks.cpp)
+add_yolo_executable(video_yolo26_seg_pose src/video_yolo26_seg_pose.cpp)
+add_yolo_executable(video_yoloe_seg src/video_yoloe_seg.cpp)
+add_yolo_executable(image_yoloe_seg src/image_yoloe_seg.cpp)
+add_yolo_executable(camera_inference src/camera_inference.cpp)
+add_yolo_executable(class_image_inference src/class_image_inference.cpp)
+add_yolo_executable(batch_image_inference src/batch_image_inference.cpp)
 
 # ============================================================================
 # Examples (optional)
