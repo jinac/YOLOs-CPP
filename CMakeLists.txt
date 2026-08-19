@@ -2,7 +2,7 @@
 # YOLOs-CPP - High-Performance C++ Inference for YOLO Models
 # ============================================================================
 cmake_minimum_required(VERSION 3.16)
-project(YOLOs-CPP VERSION 2.0.0 LANGUAGES CXX)
+project(YOLOs-CPP VERSION 1.1.0 LANGUAGES CXX)
 
 # ============================================================================
 # C++ Standard
@@ -190,6 +190,7 @@ add_yolo_executable(image_yoloe_seg src/image_yoloe_seg.cpp)
 add_yolo_executable(camera_inference src/camera_inference.cpp)
 add_yolo_executable(class_image_inference src/class_image_inference.cpp)
 add_yolo_executable(batch_image_inference src/batch_image_inference.cpp)
+add_yolo_executable(image_depth_inference src/image_depth_inference.cpp)
 
 # ============================================================================
 # Examples (optional)

@@ -100,6 +100,39 @@ auto result = classifier.classify(image);
 std::cout << result.className << ": " << result.confidence * 100 << "%" << std::endl;
 ```
 
+## Depth Estimation
+
+```cpp
+#include "yolos/yolos.hpp"
+
+yolos::depth::YOLODepthEstimator estimator("yolo26n-depth.onnx", /*gpu=*/true);
+
+cv::Mat depth = estimator.estimate(frame);   // CV_32FC1, meters
+
+// Read a distance directly
+std::cout << depth.at<float>(frame.rows / 2, frame.cols / 2) << " m" << std::endl;
+
+// Visualize
+estimator.drawDepth(frame, depth);
+```
+
+Depth needs no labels file and has no confidence threshold — the model emits one dense
+map. See [Depth Estimation](../api/api.md#depth-estimation-yolosdepth) for the units and
+the colormap options.
+
+For video, pin the colour range so the overlay does not flicker frame to frame:
+
+```cpp
+double lo, hi;
+cv::minMaxLoc(firstDepth, &lo, &hi);
+const float vmin = 1.0f / hi;   // disparity: near objects have the largest 1/d
+const float vmax = 1.0f / lo;
+
+yolos::drawing::drawDepthMap(frame, depth, 0.6f,
+                             yolos::drawing::DepthColormap::Jet,
+                             yolos::drawing::DepthNorm::Disparity, vmin, vmax);
+```
+
 ## Video Processing
 
 ```cpp
@@ -112,6 +145,45 @@ while (cap.read(frame)) {
     cv::imshow("Detection", frame);
     if (cv::waitKey(1) == 27) break;
 }
+```
+
+## Batch Inference
+
+One ONNX Runtime call for a whole batch instead of one call per image — the throughput
+win on GPU. See [Batch Inference](../api/api.md#batch-inference) for the fallback rules.
+
+```cpp
+std::vector<cv::Mat> images = {cv::imread("a.jpg"), cv::imread("b.jpg"), cv::imread("c.jpg")};
+
+// One result vector per input image, in input order
+auto results = detector.batchDetect(images, /*conf=*/0.25f, /*iou=*/0.45f);
+
+for (size_t i = 0; i < images.size(); ++i) {
+    detector.drawDetections(images[i], results[i]);
+}
+```
+
+Requires a model exported with `model.export(format="onnx", dynamic=True)`. Fixed-batch
+exports fall back to a per-image loop automatically — check with
+`detector.supportsBatchSize(images.size())`.
+
+The same pattern applies to `batchSegment()`, `batchClassify()`, and `batchDetect()` on
+the pose and OBB detectors.
+
+## Loading a Model From Memory
+
+For encrypted stores, network streams and resources embedded in the binary. See
+[In-Memory Model Loading](../api/api.md#in-memory-model-loading).
+
+```cpp
+// Bytes from anywhere; readFileBytes() is just a convenience helper
+std::vector<uint8_t> bytes = yolos::utils::readFileBytes("yolo11n.onnx");
+
+// Class names as a vector, so no labels file is needed either
+yolos::det::YOLODetector detector(bytes.data(), bytes.size(), {"person", "bicycle", "car"});
+
+// ONNX Runtime copied the buffer during construction — safe to wipe it now
+auto detections = detector.detect(frame);
 ```
 
 ## Camera Stream
@@ -136,6 +208,7 @@ while (cap.read(frame)) {
 2. **Use GPU when available** — 5-10x faster than CPU
 3. **Adjust thresholds** — Higher confidence = fewer detections, faster NMS
 4. **Match input resolution** — Use model's expected size (640x640)
+5. **Batch when you have several images** — `batchDetect()` amortizes one ONNX call across the batch (needs a `dynamic=True` export)
 
 ## Error Handling
 
